@@ -1,5 +1,5 @@
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt::{self, Display},
     str::FromStr,
 };
@@ -27,26 +27,24 @@ impl FromStr for ChunkType {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self> {
         if !s.chars().all(|c| c.is_ascii_alphabetic()) {
-            return Result::Err(throw_string_error("Character value out of range"));
+            return Err(throw_string_error("Character value out of range"));
         }
         if s.len() != 4 {
-            return Result::Err(throw_string_error("String length incorrect size"));
+            return Err(throw_string_error("String length incorrect size"));
         }
-        let mut ctype: [u8; 4] = Default::default();
-        ctype.copy_from_slice(s.as_bytes());
-        return Result::Ok(ChunkType { ctype });
+        return Ok(ChunkType {
+            ctype: s.as_bytes().try_into()?,
+        });
     }
 }
 
 impl Display for ChunkType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        match std::str::from_utf8(&self.ctype) {
-            Err(_e) => Err(std::fmt::Error {}),
-            Ok(s) => write!(f, "{}", s),
-        }
+        write!(f, "{}", std::str::from_utf8(&self.ctype).unwrap())
     }
 }
 
+#[allow(dead_code)]
 impl ChunkType {
     pub fn bytes(&self) -> [u8; 4] {
         return self.ctype;
