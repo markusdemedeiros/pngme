@@ -5,6 +5,7 @@ use crate::{
     Error, Result,
 };
 
+#[derive(Eq, PartialEq, Debug)]
 pub struct Png {
     chunks: Vec<Chunk>,
 }
@@ -67,18 +68,6 @@ impl Png {
                 );
             }
         }
-        // let bs = chunk_type.as_bytes();
-        // for c in self.chunks.iter() {
-        //     if c.chunk_type().bytes() == bs {
-        //         return Some(c);
-        //     }
-        // }
-        // return Err(std::io::Error::new(std::io::ErrorKind::Other, "Chunk not found").into());
-
-        // match self.chunks.pop() {
-        //     Some(c) => Ok(c),
-        //     None => Err(std::io::Error::new(std::io::ErrorKind::Other, "Empty PNG").into()),
-        // }
     }
     pub fn header(&self) -> &[u8; 8] {
         return &Png::STANDARD_HEADER;

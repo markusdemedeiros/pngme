@@ -4,28 +4,7 @@ use std::{
     str::FromStr,
 };
 
-/*
- * From the PNG Spec:
- *
- * A 4-byte chunk type code. For convenience in description and in examining
- * PNG files, type codes are restricted to consist of uppercase and lowercase
- * ASCII letters (A-Z and a-z, or 65-90 and 97-122 decimal). However, encoders
- * and decoders must treat the codes as fixed binary values, not character
- * strings. For example, it would not be correct to represent the type code
- * IDAT by the EBCDIC equivalents of those letters. Additional naming
- * conventions for chunk types are discussed in the next section.
- *
- * Chunk Naming Conventions:
- * Ancillary bit: bit 5 of first byte
- *      0 (uppercase) = critical, 1 (lowercase) = ancillary.
- * Private bit: bit 5 of second byte
- *      0 (uppercase) = public, 1 (lowercase) = private.
- * Reserved bit: bit 5 of third byte
- *      Must be 0 (uppercase) in files conforming to this version of PNG.
- * Safe-to-copy bit: bit 5 of fourth byte
- *      0 (uppercase) = unsafe to copy, 1 (lowercase) = safe to copy.
- *
- */
+use crate::{throw_string_error, Error, Result};
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct ChunkType {
@@ -33,27 +12,25 @@ pub struct ChunkType {
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
-    type Error = &'static str;
-    fn try_from(value: [u8; 4]) -> std::result::Result<Self, Self::Error> {
-        if !value
-            .iter()
-            .all(|&b| ((b >= 65) && (b <= 90)) || (b >= 97) && (b <= 122))
-        {
-            return Result::Err("Byte value out of range");
+    type Error = Error;
+    fn try_from(value: [u8; 4]) -> Result<Self> {
+        let ret = ChunkType { ctype: value };
+        if ret.is_valid() {
+            return Ok(ret);
+        } else {
+            return Err(throw_string_error("Invalid chunk type"));
         }
-
-        return Result::Ok(ChunkType { ctype: value });
     }
 }
 
 impl FromStr for ChunkType {
-    type Err = &'static str;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self> {
         if !s.chars().all(|c| c.is_ascii_alphabetic()) {
-            return Result::Err("Character value out of range");
+            return Result::Err(throw_string_error("Character value out of range"));
         }
         if s.len() != 4 {
-            return Result::Err("String length incorrect size");
+            return Result::Err(throw_string_error("String length incorrect size"));
         }
         let mut ctype: [u8; 4] = Default::default();
         ctype.copy_from_slice(s.as_bytes());
@@ -76,11 +53,7 @@ impl ChunkType {
     }
 
     fn is_valid(&self) -> bool {
-        let in_range: bool = self
-            .ctype
-            .iter()
-            .all(|&b| ((b >= 65) && (b <= 90)) || (b >= 97) && (b <= 122));
-        return in_range && self.is_reserved_bit_valid();
+        bytes_alphabetic(self.ctype) && self.is_reserved_bit_valid()
     }
 
     fn is_critical(&self) -> bool {
@@ -95,6 +68,12 @@ impl ChunkType {
     fn is_safe_to_copy(&self) -> bool {
         return (self.ctype[3] >> 5) & 0b1 == 0b1;
     }
+}
+
+fn bytes_alphabetic(value: [u8; 4]) -> bool {
+    return value
+        .iter()
+        .all(|&b| ((b >= 65) && (b <= 90)) || (b >= 97) && (b <= 122));
 }
 
 #[cfg(test)]

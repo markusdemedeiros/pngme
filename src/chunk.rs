@@ -5,8 +5,9 @@ use std::{
 
 use crc::Crc;
 
-use crate::{chunk_type::ChunkType, Error};
+use crate::{chunk_type::ChunkType, throw_string_error, Error, Result};
 
+#[derive(Eq, PartialEq, Debug)]
 pub struct Chunk {
     clength: u32,
     ctype: ChunkType,
@@ -15,16 +16,16 @@ pub struct Chunk {
 }
 
 impl TryFrom<&[u8]> for Chunk {
-    type Error = &'static str;
+    type Error = Error;
 
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(value: &[u8]) -> Result<Self> {
         if value.len() < 4 {
-            return Err("Insufficient data to read size");
+            return Err(throw_string_error("Insufficient data to read size"));
         }
         let clength: u32 = u32::from_be_bytes([value[0], value[1], value[2], value[3]]);
 
         if value.len() != usize::try_from(clength).unwrap() + 12 {
-            return Err("Malsized chunk");
+            return Err(throw_string_error("Malsized chunk"));
         }
         let ctype: ChunkType = ChunkType::try_from([value[4], value[5], value[6], value[7]])?;
         let cdata: Vec<u8> = value[8..value.len() - 4].to_vec();
@@ -37,7 +38,7 @@ impl TryFrom<&[u8]> for Chunk {
 
         let crc: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
         if ccrc != crc.checksum(&value[4..value.len() - 4]) {
-            return Err("Chunk does not match checksum");
+            return Err(throw_string_error("Chunk does not match checksum"));
         }
 
         return Ok(Chunk {
@@ -87,7 +88,7 @@ impl Chunk {
     pub fn crc(&self) -> u32 {
         return self.ccrc;
     }
-    pub fn data_as_string(&self) -> Result<String, Error> {
+    pub fn data_as_string(&self) -> Result<String> {
         match String::from_utf8(self.cdata.clone()) {
             Ok(s) => Ok(s),
             Err(_e) => panic!(),
