@@ -1,6 +1,6 @@
 use std::{
     convert::TryFrom,
-    fmt::{self, write, Display},
+    fmt::{self, Display},
     str::FromStr,
 };
 

@@ -7,7 +7,7 @@ use crc::Crc;
 
 use crate::{chunk_type::ChunkType, Error};
 
-struct Chunk {
+pub struct Chunk {
     clength: u32,
     ctype: ChunkType,
     cdata: Vec<u8>,
@@ -56,7 +56,7 @@ impl Display for Chunk {
 }
 
 impl Chunk {
-    fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
+    pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let ctype = chunk_type;
         let cdata: Vec<u8> = data;
         let clength: u32 = u32::try_from(cdata.len()).unwrap();
@@ -75,26 +75,34 @@ impl Chunk {
             ccrc,
         };
     }
-    fn length(&self) -> u32 {
+    pub fn length(&self) -> u32 {
         return self.clength;
     }
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         return &self.ctype;
     }
-    fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &[u8] {
         return self.cdata.as_slice();
     }
-    fn crc(&self) -> u32 {
+    pub fn crc(&self) -> u32 {
         return self.ccrc;
     }
-    fn data_as_string(&self) -> Result<String, Error> {
+    pub fn data_as_string(&self) -> Result<String, Error> {
         match String::from_utf8(self.cdata.clone()) {
             Ok(s) => Ok(s),
-            Err(e) => panic!(),
+            Err(_e) => panic!(),
         }
     }
-    fn as_bytes(&self) -> Vec<u8> {
-        todo!();
+    pub fn as_bytes(&self) -> Vec<u8> {
+        return self
+            .clength
+            .to_be_bytes()
+            .iter()
+            .cloned()
+            .chain(self.ctype.bytes().iter().cloned())
+            .chain(self.data().iter().cloned())
+            .chain(self.ccrc.to_be_bytes().iter().cloned())
+            .collect();
     }
 }
 
