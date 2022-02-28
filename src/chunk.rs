@@ -1,5 +1,5 @@
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt::{self, Display},
 };
 
@@ -22,22 +22,21 @@ impl TryFrom<&[u8]> for Chunk {
         if value.len() < 4 {
             return Err(throw_string_error("Insufficient data to read size"));
         }
-        let clength: u32 = u32::from_be_bytes([value[0], value[1], value[2], value[3]]);
+        let clength: u32 = u32::from_be_bytes(value[0..4].try_into()?);
 
         if value.len() != usize::try_from(clength).unwrap() + 12 {
             return Err(throw_string_error("Malsized chunk"));
         }
-        let ctype: ChunkType = ChunkType::try_from([value[4], value[5], value[6], value[7]])?;
-        let cdata: Vec<u8> = value[8..value.len() - 4].to_vec();
-        let ccrc: u32 = u32::from_be_bytes([
-            value[value.len() - 4],
-            value[value.len() - 3],
-            value[value.len() - 2],
-            value[value.len() - 1],
-        ]);
 
-        let crc: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
-        if ccrc != crc.checksum(&value[4..value.len() - 4]) {
+        // Slice the data
+        let raw_type: [u8; 4] = value[4..8].try_into()?;
+        let raw_crc: [u8; 4] = value[value.len() - 4..value.len()].try_into()?;
+        let cdata: Vec<u8> = value[8..value.len() - 4].to_vec();
+
+        // Process the data
+        let ctype: ChunkType = ChunkType::try_from(raw_type)?;
+        let ccrc: u32 = u32::from_be_bytes(raw_crc);
+        if ccrc != Chunk::CHUNK_CRC.checksum(&value[4..value.len() - 4]) {
             return Err(throw_string_error("Chunk does not match checksum"));
         }
 
@@ -52,28 +51,32 @@ impl TryFrom<&[u8]> for Chunk {
 
 impl Display for Chunk {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[ Chunk (show data not implemented) ]")
+        writeln!(f, "CHUNK::",)?;
+        writeln!(f, "\tLENGTH: {}", self.length())?;
+        writeln!(f, "\tTYPE: {}", self.chunk_type())?;
+        writeln!(f, "\tCRC: {}", self.crc())
     }
 }
 
 impl Chunk {
+    // CRC algorithm used by the PNG spec
+    pub const CHUNK_CRC: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
+
     pub fn new(chunk_type: ChunkType, data: Vec<u8>) -> Chunk {
         let ctype = chunk_type;
         let cdata: Vec<u8> = data;
         let clength: u32 = u32::try_from(cdata.len()).unwrap();
-        let crc: Crc<u32> = Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
         let tocrc: Vec<u8> = ctype
             .bytes()
             .iter()
             .cloned()
             .chain(cdata.iter().cloned())
             .collect();
-        let ccrc: u32 = crc.checksum(&tocrc);
         return Chunk {
             clength,
             ctype,
             cdata,
-            ccrc,
+            ccrc: Chunk::CHUNK_CRC.checksum(&tocrc),
         };
     }
     pub fn length(&self) -> u32 {
