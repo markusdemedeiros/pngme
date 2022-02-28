@@ -6,7 +6,7 @@ use std::{
 
 use crate::{throw_string_error, Error, Result};
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub struct ChunkType {
     ctype: [u8; 4],
 }
