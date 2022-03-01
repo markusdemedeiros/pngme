@@ -1,5 +1,6 @@
 // mod args;
 mod chunk;
+mod chunk_spec;
 mod chunk_type;
 mod png_util;
 // mod commands;

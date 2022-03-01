@@ -31,6 +31,7 @@ pub fn chunk_headers(png: Png) -> Vec<ChunkType> {
 pub fn chunk_headers_show(png: Png) -> Vec<String> {
     let mut ret: Vec<String> = Vec::new();
     for chunk in png.chunks() {
+        print!("{:?}", &chunk.chunk_type().bytes());
         ret.push(String::from(
             std::str::from_utf8(&chunk.chunk_type().bytes()[..]).unwrap(),
         ));
